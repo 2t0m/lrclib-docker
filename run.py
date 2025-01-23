@@ -104,7 +104,7 @@ def process_file(file_path):
     if not check_file_exists(file_path):
         return
 
-    api = LrcLibAPI(user_agent=os.getenv("USER_AGENT", "my-app/0.0.1"))
+    api = LrcLibAPI(user_agent=os.getenv("USER_AGENT", "lrclib-docker v0.0.1 (https://github.com/2t0m/lrclib-docker)"))
 
     try:
         audio = EasyID3(file_path)
