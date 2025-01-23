@@ -1,0 +1,4 @@
+requests>=2.31.0,<3.0.0  # For making HTTP requests to the API
+mutagen==1.46.0          # For managing MP3 file metadata
+python-dotenv==0.21.0    # For managing environment variables in the .env file
+lrclibapi==0.3.1         # For handling requests to LRCLIB
