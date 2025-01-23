@@ -1,7 +1,6 @@
 services:
   lrclib-docker:
-    build: .
-    image: lrclib-docker:v0.0.1
+    image: 2t0m/lrclib-docker
     container_name: lrclib-docker
     volumes:
       - /path/to/music:/app/music       # Mount the local music directory to /app/music in the container
