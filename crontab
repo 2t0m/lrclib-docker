@@ -1,0 +1,7 @@
+# Cron job configuration for running the Python script periodically
+
+# The following line schedules the script to run at the time defined by the `CRON_SCHEDULE` environment variable.
+# This cron job will execute the script that processes the music files and updates the lyrics.
+# Log output will be redirected to `/var/log/cron.log`.
+
+${CRON_SCHEDULE} python3 /app/run.py --folder /app/music >> /var/log/cron.log 2>&1
