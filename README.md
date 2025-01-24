@@ -7,7 +7,6 @@ The application supports the following environment variables for customization:
 
 | Variable Name   | Default Value                        | Description                                                                 |
 |-----------------|--------------------------------------|-----------------------------------------------------------------------------|
-| `USER_AGENT`   | `lrclib-docker v0.0.1 (https://github.com/2t0m/lrclib-docker)` | A custom `User-Agent` header for API requests. It should include your application's name, version, and homepage link. |
 | `RUN_ONCE`      | `False`                             | If set to `True`, the script runs once at startup.                         |
 | `RUN_SCHEDULED` | `False`                             | If set to `True`, the script runs on a schedule configured via `CRON_SCHEDULE`. |
 | `CRON_SCHEDULE` | `0 * * * *`                         | The cron schedule (in [CRON syntax](https://crontab.guru/)) for execution. |
