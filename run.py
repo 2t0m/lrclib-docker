@@ -15,14 +15,18 @@ LOCK_FILE = "/tmp/run_py.lock"
 def setup_logging():
     log_level_env = os.getenv("LOG_LEVEL", "INFO").upper()
     numeric_level = getattr(logging, log_level_env, logging.INFO)
+
+    # Réinitialiser tous les handlers pour s'assurer qu'on applique bien la config
+    for handler in logging.root.handlers[:]:
+        logging.root.removeHandler(handler)
+
     logging.basicConfig(
         level=numeric_level,
         format="%(asctime)s [%(levelname)s] %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
-    logging.debug(f"Log level set to: {log_level_env}")
 
-setup_logging()
+    logging.debug(f"Log level set to: {log_level_env}")
 
 # Function to acquire a lock
 def acquire_lock():
@@ -104,7 +108,7 @@ def process_file(file_path):
     if not check_file_exists(file_path):
         return
 
-    api = LrcLibAPI(user_agent=os.getenv("USER_AGENT", "lrclib-docker v0.0.1 (https://github.com/2t0m/lrclib-docker)"))
+    api = LrcLibAPI(user_agent=os.getenv("USER_AGENT", "lrclib-docker v0.0.2 (https://github.com/2t0m/lrclib-docker)"))
 
     try:
         audio = EasyID3(file_path)
