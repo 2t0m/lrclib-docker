@@ -11,7 +11,8 @@ The application supports the following environment variables for customization:
 | `RUN_SCHEDULED` | `False`                             | If set to `True`, the script runs on a schedule configured via `CRON_SCHEDULE`. |
 | `CRON_SCHEDULE` | `0 * * * *`                         | The cron schedule (in [CRON syntax](https://crontab.guru/)) for execution. |
 | `API_SLEEP_TIME`| `25`                                | The delay (in seconds) between API calls to avoid rate limiting.           |
-| `MP3_LIMIT`     | `100`                               | The maximum number of MP3 files to process per execution.                  |
+| `FILE_LIMIT`    | `100`                              | The maximum number of audio files to process per execution.                  |
+| `MAX_PARALLEL`  | `1`                                 | The maximum number of parallel threads or processes used for processing files. Increasing this value can speed up execution but may consume more system resources. |
 | `LOG_LEVEL`     | `INFO`                              | Log verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`).                       |
 | `USER_AGENT`    | `lrclib-docker v0.0.1`              | The User-Agent string for API requests.                                    |
 
@@ -35,7 +36,8 @@ services:
       RUN_SCHEDULED: "False"      # Disable scheduled execution
       CRON_SCHEDULE: "0 * * * *"  # Schedule (e.g., every hour)
       API_SLEEP_TIME: "20"        # Time between API calls
-      MP3_LIMIT: "100"            # Limit number of MP3 files processed
+      FILE_LIMIT: "100"           # Limit number of file files processed
+      MAX_PARALLEL: "5"
       LOG_LEVEL: "DEBUG"          # Debugging logs
     restart: always
 ```
