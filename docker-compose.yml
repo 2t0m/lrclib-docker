@@ -11,6 +11,7 @@ services:
       LOG_LEVEL: "ERROR"                   # Logging level for the application (e.g., DEBUG, INFO, WARNING, ERROR)
       USER_AGENT: "lrclib-docker"          # Custom User-Agent for API requests
       API_SLEEP_TIME: "5"                  # Time in seconds to wait between API calls to avoid rate limiting
+      MAX_PARALLEL:	"1"	                   # The maximum number of parallel threads or processes used for processing files.
       FILE_LIMIT: "0"                      # Maximum number of music files to process per script execution
     entrypoint: ["/app/entrypoint.sh"]     # Entrypoint script to set up cron and start the application
     restart: always 
