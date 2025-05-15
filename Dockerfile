@@ -1,18 +1,20 @@
 # Step to build the Docker image
 FROM python:3.9-slim
 
+# Install cron
+RUN apt-get update && apt-get install -y --no-install-recommends cron && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # Set the working directory
 WORKDIR /app
 
-# Copy necessary files into the image
-COPY . /app
+# Copy only the requirements file first to leverage Docker cache
 COPY requirements.txt /app/
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install cron
-RUN apt-get update && apt-get install -y cron
+# Copy the rest of the application files
+COPY . /app
 
 # Copy the crontab file and set the appropriate permissions
 COPY crontab /etc/cron.d/crontab
