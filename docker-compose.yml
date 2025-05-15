@@ -1,16 +1,16 @@
 services:
   lrclib-docker:
-    image: 2t0m/lrclib-docker:latest
+    image: ghcr.io/2t0m/lrclib-docker:latest
     container_name: lrclib-docker
     volumes:
       - /mnt/usbhdd/music:/app/music       # Mount the local music directory to /app/music in the container
     environment:
-      RUN_ONCE: "True"                  # Whether to run the lyrics processing script immediately at container startup
-      RUN_SCHEDULED: "True"             # Whether to enable scheduled execution via cron
-      CRON_SCHEDULE: "0 * * * *"        # Cron schedule for running the script (default: every hour)
-      LOG_LEVEL: "ERROR"                # Logging level for the application (e.g., DEBUG, INFO, WARNING, ERROR)
-      USER_AGENT: "lrclib-docker v0.0.2 (https://github.com/2t0m/lrclib-docker)" # Custom User-Agent for API requests
-      API_SLEEP_TIME: "5"               # Time in seconds to wait between API calls to avoid rate limiting
-      MP3_LIMIT: "0"                    # Maximum number of MP3 files to process per script execution
-    entrypoint: ["/app/entrypoint.sh"]  # Entrypoint script to set up cron and start the application
+      RUN_ONCE: "True"                     # Whether to run the lyrics processing script immediately at container startup
+      RUN_SCHEDULED: "True"                # Whether to enable scheduled execution via cron
+      CRON_SCHEDULE: "0 * * * *"           # Cron schedule for running the script (default: every hour)
+      LOG_LEVEL: "ERROR"                   # Logging level for the application (e.g., DEBUG, INFO, WARNING, ERROR)
+      USER_AGENT: "lrclib-docker"          # Custom User-Agent for API requests
+      API_SLEEP_TIME: "5"                  # Time in seconds to wait between API calls to avoid rate limiting
+      FILE_LIMIT: "0"                      # Maximum number of music files to process per script execution
+    entrypoint: ["/app/entrypoint.sh"]     # Entrypoint script to set up cron and start the application
     restart: always 
