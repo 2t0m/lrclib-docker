@@ -18,29 +18,8 @@ The application supports the following environment variables for customization:
 
 ### Notes on `USER_AGENT`
 Including a meaningful `User-Agent` is encouraged when interacting with the LrcLib API. For example:  
-`lrclib-docker v0.0.1 (https://github.com/2t0m/lrclib-docker)`.  
+`lrclib-docker`.  
 This helps LrcLib identify your application and provide better support or analytics. While it is not mandatory, it's a recommended practice when developing applications that interact with the API.
-
-### Example YAML File
-
-```yaml
-services:
-  lrclib-docker:
-    image: 2t0m/lrclib-docker:latest
-    container_name: lrclib-docker
-    volumes:
-      - /path/to/your/music:/app/music
-    environment:
-      USER_AGENT: "lrclib-docker v0.0.1 (https://github.com/2t0m/lrclib-docker)"
-      RUN_ONCE: "True"            # Run the script once
-      RUN_SCHEDULED: "False"      # Disable scheduled execution
-      CRON_SCHEDULE: "0 * * * *"  # Schedule (e.g., every hour)
-      API_SLEEP_TIME: "20"        # Time between API calls
-      FILE_LIMIT: "100"           # Limit number of file files processed
-      MAX_PARALLEL: "5"
-      LOG_LEVEL: "DEBUG"          # Debugging logs
-    restart: always
-```
 
 ## Special Thanks
 Special thanks to [LrcLib](https://github.com/tranxuanthang/lrclib) for powering the lyrics synchronization.
