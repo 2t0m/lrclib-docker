@@ -63,11 +63,17 @@ def check_file_exists(file_path):
 # Function to check if lyrics already exist in ID3 tags
 def has_lyrics(file_path):
     try:
-        audio = File(file_path)
-        if isinstance(audio, ID3):
-            for tag in audio.values():
-                if isinstance(tag, USLT):
-                    return tag.text.strip()
+        logging.debug(f"Checking for lyrics in file: {file_path}")
+        # Force loading as ID3
+        audio = ID3(file_path)
+        for tag_key, tag in audio.items():
+            if isinstance(tag, USLT):
+                lyrics = tag.text.strip()
+                logging.debug(f"Found USLT tag: {tag_key}, Lyrics: {lyrics}")
+                if lyrics:
+                    logging.info("Lyrics already found.")
+                    return lyrics
+        logging.debug(f"No lyrics found in file: {file_path}")
         return None
     except Exception as e:
         logging.error(f"Error while checking lyrics for {file_path}: {e}")
@@ -144,17 +150,30 @@ def process_synced_lyrics(lyrics):
 
 # Function to process a specific music file
 def process_file(file_path):
+    global files_processed, files_with_lyrics, files_with_downloaded_lyrics, files_without_lyrics
+
+    logging.debug(f"Starting processing for file: {file_path}")
     if not check_file_exists(file_path):
+        logging.debug(f"Skipping file as it does not exist: {file_path}")
         return
 
-    api = LrcLibAPI(user_agent=os.getenv("USER_AGENT", "lrclib-docker v0.0.2 (https://github.com/2t0m/lrclib-docker)"))
+    files_processed += 1  # Increment the processed files counter
+
+    # Log all tags in the MP3 file only if log level is DEBUG
+    if logging.getLogger().isEnabledFor(logging.DEBUG):
+        log_mp3_tags(file_path)
+
+    api = LrcLibAPI(user_agent=os.getenv("USER_AGENT", "lrclib-docker"))
 
     try:
         logging.info(f"Processing file: {file_path}")
 
+        # Check for existing lyrics
         existing_lyrics = has_lyrics(file_path)
         if existing_lyrics:
             logging.info(f"Lyrics already present in the file: {file_path}. Skipping.")
+            logging.debug("Lyrics already found, skipping API call.")
+            files_with_lyrics += 1  # Increment the counter for files with existing lyrics
             return
 
         audio = File(file_path, easy=True)
@@ -167,6 +186,10 @@ def process_file(file_path):
         album_name = audio.get("album", [""])[0]
         duration = int(audio.info.length) if hasattr(audio, "info") else None
 
+        logging.debug(f"Metadata for {file_path}: Track='{track_name}', Artist='{artist_name}', Album='{album_name}', Duration={duration}")
+
+        # Log the API request details
+        logging.debug(f"Making API request with: track_name='{track_name}', artist_name='{artist_name}', album_name='{album_name}', duration={duration}")
         lyrics_result = api.get_lyrics(
             track_name=track_name,
             artist_name=artist_name,
@@ -174,19 +197,26 @@ def process_file(file_path):
             duration=duration,
         )
 
+        # Log the API response
+        logging.debug(f"API response for {file_path}: {lyrics_result}")
+
         lyrics = lyrics_result.synced_lyrics or lyrics_result.plain_lyrics
         if lyrics:
             logging.info(f"Lyrics found for {track_name}.")
             add_or_replace_lyrics(file_path, lyrics)
+            files_with_downloaded_lyrics += 1  # Increment the counter for files with downloaded lyrics
         else:
             logging.warning(f"No lyrics found for {track_name}.")
-        time.sleep(int(os.getenv("API_SLEEP_TIME", 25)))
-
+            files_without_lyrics += 1  # Increment the counter for files without lyrics
+        logging.debug("Sleep time after API call completed.")
     except Exception as e:
         logging.error(f"Error while retrieving metadata or lyrics for {file_path}: {e}")
+    finally:
+        time.sleep(int(os.getenv("API_SLEEP_TIME", 5)))
 
 # Function to process all music files in a directory recursively
 def process_directory(directory_path, file_limit):
+    logging.debug(f"Scanning directory: {directory_path} with file limit: {file_limit}")
     if not os.path.isdir(directory_path):
         logging.error(f"The specified path is not a valid directory: {directory_path}")
         return []
@@ -198,33 +228,67 @@ def process_directory(directory_path, file_limit):
     files_to_process = []
 
     for root, _, files in os.walk(directory_path):  # Recursively walk through directories
+        logging.debug(f"Entering directory: {root}")
         for file_name in files:
             file_path = os.path.join(root, file_name)
             if any(file_path.lower().endswith(ext) for ext in supported_extensions):
                 if file_limit > 0 and file_count >= file_limit:
                     logging.info(f"Reached the file limit of {file_limit}. Stopping.")
                     return files_to_process
+                logging.debug(f"File added to processing list: {file_path}")
                 files_to_process.append(file_path)
                 file_count += 1
 
+    logging.debug(f"Total files to process: {len(files_to_process)}")
     return files_to_process
+
+# Function to log MP3 tags
+def log_mp3_tags(file_path):
+    try:
+        # Force loading as ID3
+        audio = ID3(file_path)
+        logging.info(f"Tags found in {file_path}:")
+        for tag_key, tag in audio.items():
+            logging.info(f"  Tag: {tag_key}, Value: {tag}")
+    except Exception as e:
+        logging.error(f"Error while reading tags for {file_path}: {e}")
+
+# Global counters
+files_processed = 0
+files_with_lyrics = 0
+files_with_downloaded_lyrics = 0
+files_without_lyrics = 0
 
 # Main function
 def main():
+    # Configure logging
+    setup_logging()
+
     parser = argparse.ArgumentParser(description="Add synchronized lyrics to music files.")
     parser.add_argument("--folder", type=str, required=True, help="Path to the folder containing music files.")
     parser.add_argument("--file-limit", type=int, default=int(os.getenv("FILE_LIMIT", 100)), help="Limit the number of music files processed. Set 0 for unlimited.")
     args = parser.parse_args()
+
+    logging.debug(f"Arguments received: folder={args.folder}, file_limit={args.file_limit}")
+    logging.warning("Hello! This script is designed to run in a Docker container. If you are running it outside of Docker, please ensure you have the necessary dependencies installed.")
 
     file_limit = args.file_limit if args.file_limit > 0 else float("inf")
     files_to_process = process_directory(args.folder, file_limit)
 
     # Get max parallel processes from environment variable
     max_parallel = int(os.getenv("MAX_PARALLEL", 1))
+    logging.debug(f"Max parallel processes: {max_parallel}")
 
     # Process files in parallel
     with ThreadPoolExecutor(max_workers=max_parallel) as executor:
         executor.map(process_file, files_to_process)
+
+    # Log the summary
+    logging.info("Processing summary:")
+    logging.info(f"  Total files processed: {files_processed}")
+    logging.info(f"  Files with existing lyrics: {files_with_lyrics}")
+    logging.info(f"  Files with downloaded lyrics: {files_with_downloaded_lyrics}")
+    logging.info(f"  Files without lyrics: {files_without_lyrics}")
 
 # Run the script with lock management
 if __name__ == "__main__":

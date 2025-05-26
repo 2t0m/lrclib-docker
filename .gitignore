@@ -1,0 +1,7 @@
+.env
+docker-compose.override.yml
+*.log
+__pycache__/
+*.pyc
+*.pyo
+.vscode/

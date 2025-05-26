@@ -3,7 +3,7 @@
 # Export environment variables for the Python script
 export LOG_LEVEL=${LOG_LEVEL:-"INFO"}
 export CRON_SCHEDULE=${CRON_SCHEDULE:-"0 * * * *"}
-export USER_AGENT=${USER_AGENT:-"lrclib-docker v0.0.1 (https://github.com/2t0m/lrclib-docker)"}
+export USER_AGENT=${USER_AGENT:-"lrclib-docker"}
 export API_SLEEP_TIME=${API_SLEEP_TIME:-"25"}
 export FILE_LIMIT=${FILE_LIMIT:-"100"}
 export RUN_ONCE=${RUN_ONCE:-"False"}
