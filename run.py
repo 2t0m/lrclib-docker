@@ -8,6 +8,7 @@ from mutagen.id3 import ID3, USLT
 from mutagen import File
 from lrclib import LrcLibAPI
 from concurrent.futures import ThreadPoolExecutor
+from collections import Counter
 
 # Constants
 LOCK_FILE = "/tmp/run_py.lock"
@@ -157,7 +158,7 @@ def process_file(file_path):
         logging.debug(f"Skipping file as it does not exist: {file_path}")
         return
 
-    files_processed += 1  # Increment the processed files counter
+    files_processed += 1
 
     # Log all tags in the MP3 file only if log level is DEBUG
     if logging.getLogger().isEnabledFor(logging.DEBUG):
@@ -173,8 +174,7 @@ def process_file(file_path):
         if existing_lyrics:
             logging.info(f"Lyrics already present in the file: {file_path}. Skipping.")
             logging.debug("Lyrics already found, skipping API call.")
-            files_with_lyrics += 1  # Increment the counter for files with existing lyrics
-            return
+            return "existing", file_path
 
         audio = File(file_path, easy=True)
         if not audio:
@@ -188,29 +188,93 @@ def process_file(file_path):
 
         logging.debug(f"Metadata for {file_path}: Track='{track_name}', Artist='{artist_name}', Album='{album_name}', Duration={duration}")
 
-        # Log the API request details
-        logging.debug(f"Making API request with: track_name='{track_name}', artist_name='{artist_name}', album_name='{album_name}', duration={duration}")
-        lyrics_result = api.get_lyrics(
-            track_name=track_name,
-            artist_name=artist_name,
-            album_name=album_name,
-            duration=duration,
-        )
+        lyrics_result = None
+
+        # First try
+        try:
+            logging.warning(f"First try: track='{track_name}', artist='{artist_name}', album='{album_name}', duration={duration}")
+            lyrics_result = api.get_lyrics(
+                track_name=track_name,
+                artist_name=artist_name,
+                album_name=album_name,
+                duration=duration,
+            )
+            lyrics = lyrics_result.synced_lyrics or lyrics_result.plain_lyrics
+            if not lyrics:
+                logging.warning("First try failed.")
+        except Exception as e:
+            logging.warning(f"First try failed with exception: {e}")
+            lyrics = None
+
+        # Second try
+        try:
+            logging.warning(f"Second try: track='{track_name}', artist='{artist_name}', album='', duration={duration}")
+            lyrics_result = api.get_lyrics(
+                track_name=track_name,
+                artist_name=artist_name,
+                album_name="",
+                duration=duration,
+            )
+            lyrics = lyrics_result.synced_lyrics or lyrics_result.plain_lyrics
+            if not lyrics:
+                logging.warning("Second try failed.")
+        except Exception as e:
+            logging.warning(f"Second try failed with exception: {e}")
+            lyrics = None
+
+        # Third try: all artists séparés par virgule, no album
+        if not lyrics:
+            try:
+                import re
+                artist_parts = [p.strip().replace("Jungkook", "Jung Kook") for p in re.split(r"[\/,]", artist_name)]
+                alt_artist = ", ".join(artist_parts)
+                logging.warning(f"Third try: track='{track_name}', artist='{alt_artist}', album='', duration={duration}")
+                lyrics_result = api.get_lyrics(
+                    track_name=track_name,
+                    artist_name=alt_artist,
+                    album_name="",
+                    duration=duration,
+                )
+                lyrics = lyrics_result.synced_lyrics or lyrics_result.plain_lyrics
+                if not lyrics:
+                    logging.warning("Third try failed.")
+            except Exception as e:
+                logging.warning(f"Third try failed with exception: {e}")
+                lyrics = None
+
+        # Fourth try: only first artist, no album
+        if not lyrics:
+            try:
+                import re
+                first_artist = re.split(r"[\/,]", artist_name)[0].strip()
+                logging.warning(f"Fourth try: track='{track_name}', artist='{first_artist}', album='', duration={duration}")
+                lyrics_result = api.get_lyrics(
+                    track_name=track_name,
+                    artist_name=first_artist,
+                    album_name="",
+                    duration=duration,
+                )
+                lyrics = lyrics_result.synced_lyrics or lyrics_result.plain_lyrics
+                if not lyrics:
+                    logging.warning("Fourth try failed.")
+            except Exception as e:
+                logging.warning(f"Fourth try failed with exception: {e}")
+                lyrics = None
 
         # Log the API response
-        logging.debug(f"API response for {file_path}: {lyrics_result}")
+        if lyrics_result is not None:
+            logging.debug(f"API response for {file_path}: {lyrics_result}")
 
-        lyrics = lyrics_result.synced_lyrics or lyrics_result.plain_lyrics
         if lyrics:
             logging.info(f"Lyrics found for {track_name}.")
             add_or_replace_lyrics(file_path, lyrics)
-            files_with_downloaded_lyrics += 1  # Increment the counter for files with downloaded lyrics
+            return "downloaded", file_path
         else:
             logging.warning(f"No lyrics found for {track_name}.")
-            files_without_lyrics += 1  # Increment the counter for files without lyrics
-        logging.debug("Sleep time after API call completed.")
+            return "none", file_path
     except Exception as e:
         logging.error(f"Error while retrieving metadata or lyrics for {file_path}: {e}")
+        return "none"
     finally:
         time.sleep(int(os.getenv("API_SLEEP_TIME", 5)))
 
@@ -270,7 +334,6 @@ def main():
     args = parser.parse_args()
 
     logging.debug(f"Arguments received: folder={args.folder}, file_limit={args.file_limit}")
-    logging.warning("Hello! This script is designed to run in a Docker container. If you are running it outside of Docker, please ensure you have the necessary dependencies installed.")
 
     file_limit = args.file_limit if args.file_limit > 0 else float("inf")
     files_to_process = process_directory(args.folder, file_limit)
@@ -281,14 +344,22 @@ def main():
 
     # Process files in parallel
     with ThreadPoolExecutor(max_workers=max_parallel) as executor:
-        executor.map(process_file, files_to_process)
+        results = list(executor.map(process_file, files_to_process))
 
-    # Log the summary
-    logging.info("Processing summary:")
-    logging.info(f"  Total files processed: {files_processed}")
-    logging.info(f"  Files with existing lyrics: {files_with_lyrics}")
-    logging.info(f"  Files with downloaded lyrics: {files_with_downloaded_lyrics}")
-    logging.info(f"  Files without lyrics: {files_without_lyrics}")
+    filtered_results = [r for r in results if r is not None]
+    summary = Counter(result for result, _ in filtered_results)
+    no_lyrics_files = [file_path for result, file_path in filtered_results if result == "none"]
+
+    print("Processing summary:")
+    print(f"-> Total files processed: {len(results)}")
+    print(f"-> Files with existing lyrics: {summary['existing']}")
+    print(f"-> Files with downloaded lyrics: {summary['downloaded']}")
+    print(f"-> Files without lyrics: {summary['none']}")
+
+    if no_lyrics_files:
+        logging.warning("\nFiles without lyrics:")
+        for f in no_lyrics_files:
+            logging.warning(f"- {f}")
 
 # Run the script with lock management
 if __name__ == "__main__":
