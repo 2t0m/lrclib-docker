@@ -186,6 +186,14 @@ def process_file(file_path):
         album_name = audio.get("album", [""])[0]
         duration = int(audio.info.length) if hasattr(audio, "info") else None
 
+        # Normalize ampersands (& and ＆ fullwidth) to standard &
+        if artist_name:
+            artist_name = artist_name.replace("＆", "&")  # Replace fullwidth ampersand
+        if track_name:
+            track_name = track_name.replace("＆", "&")
+        if album_name:
+            album_name = album_name.replace("＆", "&")
+
         logging.debug(f"Metadata for {file_path}: Track='{track_name}', Artist='{artist_name}', Album='{album_name}', Duration={duration}")
 
         lyrics_result = None
