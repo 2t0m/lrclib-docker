@@ -282,7 +282,7 @@ def process_file(file_path):
             return "none", file_path
     except Exception as e:
         logging.error(f"Error while retrieving metadata or lyrics for {file_path}: {e}")
-        return "none"
+        return "none", file_path
     finally:
         time.sleep(int(os.getenv("API_SLEEP_TIME", 5)))
 
@@ -302,6 +302,9 @@ def process_directory(directory_path, file_limit):
     for root, _, files in os.walk(directory_path):  # Recursively walk through directories
         logging.debug(f"Entering directory: {root}")
         for file_name in files:
+            # Ignore macOS metadata files (._*)
+            if file_name.startswith("._"):
+                continue
             file_path = os.path.join(root, file_name)
             if any(file_path.lower().endswith(ext) for ext in supported_extensions):
                 if file_limit > 0 and file_count >= file_limit:
